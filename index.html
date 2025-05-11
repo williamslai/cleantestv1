@@ -1,21 +1,18 @@
-import os
-import zipfile
 
-# 準備升級版 HTML + JS：加入黑度遮蔽（像外部 App 的黑色答案塗白）
-
-html_code = """
 <!DOCTYPE html>
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>升級版｜考卷答案清除工具</title>
+  <title>自動定位版｜考卷答案清除工具 v3</title>
   <style>
     body { font-family: sans-serif; text-align: center; margin: 2em; }
     canvas { border: 1px solid #ccc; margin-top: 10px; max-width: 100%; }
+    #version { margin-top: 1em; font-size: 0.9em; color: #666; }
   </style>
 </head>
 <body>
-  <h2>升級版｜考卷答案清除工具</h2>
+  <h2>自動定位版｜考卷答案清除工具</h2>
+  <p id="version">版本：v3（自動偵測黑色答案區並遮蔽前 10 題）</p>
   <input type="file" id="fileInput" accept="image/*"><br>
   <canvas id="canvasOutput"></canvas><br>
   <button id="downloadBtn">下載處理後圖片</button>
@@ -24,93 +21,3 @@ html_code = """
   <script src="script.js"></script>
 </body>
 </html>
-"""
-
-js_code = """
-let imageReady = false;
-let openCVReady = false;
-let imgElement = null;
-
-document.getElementById('fileInput').addEventListener('change', (e) => {
-  const file = e.target.files[0];
-  if (!file) return;
-
-  const reader = new FileReader();
-  reader.onload = function(event) {
-    imgElement = new Image();
-    imgElement.onload = function() {
-      const canvas = document.getElementById('canvasOutput');
-      const ctx = canvas.getContext('2d');
-      canvas.width = imgElement.width;
-      canvas.height = imgElement.height;
-      ctx.drawImage(imgElement, 0, 0);
-      imageReady = true;
-      if (openCVReady) processImage();
-    };
-    imgElement.src = event.target.result;
-  };
-  reader.readAsDataURL(file);
-});
-
-cv['onRuntimeInitialized'] = () => {
-  openCVReady = true;
-  if (imageReady) processImage();
-};
-
-function processImage() {
-  const canvas = document.getElementById('canvasOutput');
-  let src = cv.imread(canvas);
-  let gray = new cv.Mat();
-  let mask = new cv.Mat();
-
-  // 轉灰階 + 二值化（自動找黑色）
-  cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY, 0);
-  cv.threshold(gray, mask, 100, 255, cv.THRESH_BINARY_INV); // 黑色區域會變成白色
-
-  // 找到黑色區域輪廓並塗白
-  let contours = new cv.MatVector();
-  let hierarchy = new cv.Mat();
-  cv.findContours(mask, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
-
-  for (let i = 0; i < contours.size(); ++i) {
-    let rect = cv.boundingRect(contours.get(i));
-    if (rect.width > 10 && rect.height > 10) {
-      cv.rectangle(src, new cv.Point(rect.x, rect.y),
-                        new cv.Point(rect.x + rect.width, rect.y + rect.height),
-                        new cv.Scalar(255, 255, 255, 255), -1);
-    }
-  }
-
-  cv.imshow('canvasOutput', src);
-
-  // 清理記憶體
-  src.delete(); gray.delete(); mask.delete(); contours.delete(); hierarchy.delete();
-}
-
-document.getElementById('downloadBtn').addEventListener('click', () => {
-  const canvas = document.getElementById('canvasOutput');
-  const link = document.createElement('a');
-  link.download = 'processed_exam.png';
-  link.href = canvas.toDataURL();
-  link.click();
-});
-"""
-
-# 寫入 zip 檔
-output_dir = "/mnt/data/exam_cleaner_v2"
-os.makedirs(output_dir, exist_ok=True)
-
-with open(os.path.join(output_dir, "index.html"), "w", encoding="utf-8") as f:
-    f.write(html_code)
-
-with open(os.path.join(output_dir, "script.js"), "w", encoding="utf-8") as f:
-    f.write(js_code)
-
-zip_path = "/mnt/data/exam_cleaner_v2.zip"
-with zipfile.ZipFile(zip_path, "w") as zipf:
-    for root, _, files in os.walk(output_dir):
-        for file in files:
-            file_path = os.path.join(root, file)
-            zipf.write(file_path, arcname=os.path.relpath(file_path, output_dir))
-
-zip_path

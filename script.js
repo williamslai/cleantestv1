@@ -1,3 +1,4 @@
+
 let imageReady = false;
 let openCVReady = false;
 let imgElement = null;
@@ -24,7 +25,6 @@ document.getElementById('fileInput').addEventListener('change', (e) => {
 });
 
 cv['onRuntimeInitialized'] = () => {
-  console.log("OpenCV.js 已載入完成");
   openCVReady = true;
   if (imageReady) processImage();
 };
@@ -32,38 +32,45 @@ cv['onRuntimeInitialized'] = () => {
 function processImage() {
   const canvas = document.getElementById('canvasOutput');
   let src = cv.imread(canvas);
-  let dst = new cv.Mat();
+  let gray = new cv.Mat();
+  let mask = new cv.Mat();
 
-  // 轉灰階 + 模糊
-  cv.cvtColor(src, dst, cv.COLOR_RGBA2GRAY, 0);
-  cv.GaussianBlur(dst, dst, new cv.Size(5, 5), 0, 0, cv.BORDER_DEFAULT);
-  cv.threshold(dst, dst, 0, 255, cv.THRESH_BINARY_INV + cv.THRESH_OTSU);
+  // 轉灰階 + 二值化
+  cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY, 0);
+  cv.threshold(gray, mask, 100, 255, cv.THRESH_BINARY_INV);
 
-  // 偵測輪廓
+  // 找輪廓
   let contours = new cv.MatVector();
   let hierarchy = new cv.Mat();
-  cv.findContours(dst, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
+  cv.findContours(mask, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
 
-  // 清除（塗白）答案區域
+  // 取出 bounding boxes，並依 y 軸排序
+  let boxes = [];
   for (let i = 0; i < contours.size(); ++i) {
     let rect = cv.boundingRect(contours.get(i));
     if (rect.width > 15 && rect.height > 15) {
-      cv.rectangle(src, new cv.Point(rect.x, rect.y),
-                        new cv.Point(rect.x + rect.width, rect.y + rect.height),
-                        new cv.Scalar(255, 255, 255, 255), -1);
+      boxes.push(rect);
     }
+  }
+  boxes.sort((a, b) => a.y - b.y);  // 按垂直位置排序
+
+  // 只遮前 N 個（預設前 10 題）
+  let maxBoxes = 10;
+  for (let i = 0; i < Math.min(maxBoxes, boxes.length); i++) {
+    let rect = boxes[i];
+    cv.rectangle(src, new cv.Point(rect.x, rect.y),
+                      new cv.Point(rect.x + rect.width, rect.y + rect.height),
+                      new cv.Scalar(255, 255, 255, 255), -1);
   }
 
   cv.imshow('canvasOutput', src);
-
-  // 釋放記憶體
-  src.delete(); dst.delete(); contours.delete(); hierarchy.delete();
+  src.delete(); gray.delete(); mask.delete(); contours.delete(); hierarchy.delete();
 }
 
 document.getElementById('downloadBtn').addEventListener('click', () => {
   const canvas = document.getElementById('canvasOutput');
   const link = document.createElement('a');
-  link.download = 'processed_exam.png';
+  link.download = 'processed_exam_v3.png';
   link.href = canvas.toDataURL();
   link.click();
 });
