@@ -17,7 +17,6 @@ document.getElementById('fileInput').addEventListener('change', (e) => {
       canvas.height = imgElement.height;
       ctx.drawImage(imgElement, 0, 0);
       imageReady = true;
-      if (openCVReady) processImage();
     };
     imgElement.src = event.target.result;
   };
@@ -26,8 +25,13 @@ document.getElementById('fileInput').addEventListener('change', (e) => {
 
 cv['onRuntimeInitialized'] = () => {
   openCVReady = true;
-  if (imageReady) processImage();
 };
+
+document.getElementById('processBtn').addEventListener('click', () => {
+  if (imageReady && openCVReady) {
+    processImage();
+  }
+});
 
 function processImage() {
   const canvas = document.getElementById('canvasOutput');
@@ -35,16 +39,13 @@ function processImage() {
   let gray = new cv.Mat();
   let mask = new cv.Mat();
 
-  // 轉灰階 + 二值化
   cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY, 0);
   cv.threshold(gray, mask, 100, 255, cv.THRESH_BINARY_INV);
 
-  // 找輪廓
   let contours = new cv.MatVector();
   let hierarchy = new cv.Mat();
   cv.findContours(mask, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
 
-  // 取出 bounding boxes，並依 y 軸排序
   let boxes = [];
   for (let i = 0; i < contours.size(); ++i) {
     let rect = cv.boundingRect(contours.get(i));
@@ -52,9 +53,8 @@ function processImage() {
       boxes.push(rect);
     }
   }
-  boxes.sort((a, b) => a.y - b.y);  // 按垂直位置排序
+  boxes.sort((a, b) => a.y - b.y);
 
-  // 只遮前 N 個（預設前 10 題）
   let maxBoxes = 10;
   for (let i = 0; i < Math.min(maxBoxes, boxes.length); i++) {
     let rect = boxes[i];
@@ -70,7 +70,7 @@ function processImage() {
 document.getElementById('downloadBtn').addEventListener('click', () => {
   const canvas = document.getElementById('canvasOutput');
   const link = document.createElement('a');
-  link.download = 'processed_exam_v3.png';
+  link.download = 'processed_exam_v3_preview.png';
   link.href = canvas.toDataURL();
   link.click();
 });
