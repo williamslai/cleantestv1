@@ -18,7 +18,7 @@ document.getElementById('fileInput').addEventListener('change', (e) => {
       canvas.height = imgElement.height;
       ctx.drawImage(imgElement, 0, 0);
       imageReady = true;
-      savedRects = []; // reset
+      console.log("✅ 圖片已成功載入並繪製到 canvas");
     };
     imgElement.src = event.target.result;
   };
@@ -27,13 +27,22 @@ document.getElementById('fileInput').addEventListener('change', (e) => {
 
 cv['onRuntimeInitialized'] = () => {
   openCVReady = true;
+  console.log("✅ OpenCV.js 已完成載入");
 };
 
 document.getElementById('processBtn').addEventListener('click', () => {
-  if (imageReady && openCVReady) {
-    detectRects();
-    animateErase();
+  console.log("🔘 使用者按下『開始清除』按鈕");
+  if (!openCVReady) {
+    console.warn("⚠️ OpenCV 尚未初始化完成");
+    return;
   }
+  if (!imageReady) {
+    console.warn("⚠️ 圖片尚未載入完成");
+    return;
+  }
+
+  detectRects();
+  animateErase();
 });
 
 function detectRects() {
@@ -60,11 +69,15 @@ function detectRects() {
     cnt.delete();
   }
 
+  console.log(`📦 偵測到 ${savedRects.length} 個待遮蔽區塊`);
   src.delete(); gray.delete(); bin.delete(); contours.delete(); hierarchy.delete();
 }
 
 function animateErase(index = 0) {
-  if (index >= savedRects.length) return;
+  if (index >= savedRects.length) {
+    console.log("✅ 所有遮蔽區塊已完成");
+    return;
+  }
 
   const canvas = document.getElementById('canvasOutput');
   const ctx = canvas.getContext('2d');
@@ -73,13 +86,14 @@ function animateErase(index = 0) {
   ctx.fillStyle = "white";
   ctx.fillRect(r.x, r.y, r.width, r.height);
 
-  setTimeout(() => animateErase(index + 1), 30); // 每格 30ms
+  setTimeout(() => animateErase(index + 1), 30);
 }
 
 document.getElementById('downloadBtn').addEventListener('click', () => {
+  console.log("💾 使用者點擊下載圖片");
   const canvas = document.getElementById('canvasOutput');
   const link = document.createElement('a');
-  link.download = 'processed_exam_v4_animated.png';
+  link.download = 'processed_exam_v4_debug.png';
   link.href = canvas.toDataURL();
   link.click();
 });
