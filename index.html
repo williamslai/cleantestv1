@@ -3,7 +3,7 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>手寫字清除預覽版｜v4</title>
+  <title>手寫字清除動畫版｜v4-animated</title>
   <style>
     body { font-family: sans-serif; text-align: center; margin: 2em; }
     canvas { border: 1px solid #ccc; margin-top: 10px; max-width: 600px; width: 100%; height: auto; }
@@ -12,8 +12,8 @@
   </style>
 </head>
 <body>
-  <h2>手寫字清除預覽版｜考卷處理工具</h2>
-  <p id="version">版本：v4（筆劃面積與粗細過濾，移除疑似手寫字）</p>
+  <h2>手寫字清除動畫版｜考卷處理工具</h2>
+  <p id="version">版本：v4-animated｜<span id="timestamp"></span></p>
   <input type="file" id="fileInput" accept="image/*"><br>
   <canvas id="canvasOutput"></canvas><br>
   <div id="actions">
@@ -23,5 +23,13 @@
 
   <script async src="https://docs.opencv.org/4.x/opencv.js" type="text/javascript"></script>
   <script src="script.js"></script>
+  <script>
+    // 動態時間戳
+    const now = new Date();
+    const pad = n => n.toString().padStart(2, '0');
+    const timeString = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())} ` +
+                       `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+    document.getElementById("timestamp").textContent = timeString;
+  </script>
 </body>
 </html>
