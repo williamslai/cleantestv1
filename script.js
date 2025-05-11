@@ -37,40 +37,38 @@ function processImage() {
   const canvas = document.getElementById('canvasOutput');
   let src = cv.imread(canvas);
   let gray = new cv.Mat();
-  let mask = new cv.Mat();
+  let bin = new cv.Mat();
 
+  // 灰階 + 二值化
   cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY, 0);
-  cv.threshold(gray, mask, 100, 255, cv.THRESH_BINARY_INV);
+  cv.threshold(gray, bin, 150, 255, cv.THRESH_BINARY_INV);
 
   let contours = new cv.MatVector();
   let hierarchy = new cv.Mat();
-  cv.findContours(mask, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
+  cv.findContours(bin, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
 
-  let boxes = [];
+  // 過濾小筆跡（模擬手寫字）
   for (let i = 0; i < contours.size(); ++i) {
-    let rect = cv.boundingRect(contours.get(i));
-    if (rect.width > 15 && rect.height > 15) {
-      boxes.push(rect);
-    }
-  }
-  boxes.sort((a, b) => a.y - b.y);
+    let cnt = contours.get(i);
+    let rect = cv.boundingRect(cnt);
+    let area = rect.width * rect.height;
 
-  let maxBoxes = 10;
-  for (let i = 0; i < Math.min(maxBoxes, boxes.length); i++) {
-    let rect = boxes[i];
-    cv.rectangle(src, new cv.Point(rect.x, rect.y),
-                      new cv.Point(rect.x + rect.width, rect.y + rect.height),
-                      new cv.Scalar(255, 255, 255, 255), -1);
+    if (area < 600 || rect.height < 18) {
+      cv.rectangle(src, new cv.Point(rect.x, rect.y),
+                        new cv.Point(rect.x + rect.width, rect.y + rect.height),
+                        new cv.Scalar(255, 255, 255, 255), -1);
+    }
+    cnt.delete();
   }
 
   cv.imshow('canvasOutput', src);
-  src.delete(); gray.delete(); mask.delete(); contours.delete(); hierarchy.delete();
-}
+  src.delete(); gray.delete(); bin.delete(); contours.delete(); hierarchy.delete();
+});
 
 document.getElementById('downloadBtn').addEventListener('click', () => {
   const canvas = document.getElementById('canvasOutput');
   const link = document.createElement('a');
-  link.download = 'processed_exam_v3_preview.png';
+  link.download = 'processed_exam_v4.png';
   link.href = canvas.toDataURL();
   link.click();
 });
